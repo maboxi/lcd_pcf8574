@@ -1,0 +1,33 @@
+{
+	"name": "Embedded Development",
+	"image": "mcr.microsoft.com/vscode/devcontainers/base:ubuntu-22.04",
+	
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {}
+	},
+
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools-extension-pack",
+				"ms-vscode.cmake-tools",
+				"ms-vscode.cpptools",
+				"marus25.cortex-debug"
+			]
+		}
+	},
+
+	"onCreateCommand": "bash .devcontainer/setup.sh",
+
+	"mounts": [
+		"source=/dev/bus/usb,target=/dev/bus/usb,type=bind",
+		"source=/run/udev,target=/run/udev,type=bind"
+	],
+
+	"runArgs": [
+		"--privileged",
+		"--device-cgroup-rule=a *:* rmw"
+	],
+
+	"remoteUser": "root"
+}
