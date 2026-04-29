@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Cortex-Debug: OpenOCD (ST-Link) - basic_lcd_usage",
+            "type": "cortex-debug",
+            "request": "launch",
+            "servertype": "openocd",
+            "executable": "${workspaceFolder}/example/basic-lcd-usage/build/basic_lcd_usage.elf",
+            "configFiles": [
+                "interface/stlink.cfg",
+                "target/stm32f4x.cfg"
+            ],
+            "cwd": "${workspaceFolder}",
+            "runToMain": true,
+            "preLaunchTask": "Build basic_lcd_usage",
+            "preLaunchCommands": [],
+            "svdFile": ""
+        }
+    ]
+}

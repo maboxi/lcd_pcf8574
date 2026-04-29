@@ -1,0 +1,27 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Probe ST-Link",
+			"type": "shell",
+			"command": "st-info",
+			"args": ["--probe"],
+			"group": "test",
+			"problemMatcher": []
+		},
+		{
+			"label": "Build basic_lcd_usage",
+			"type": "shell",
+			"command": "cmake -S example/basic-lcd-usage -B example/basic-lcd-usage/build -G Ninja -DCMAKE_TOOLCHAIN_FILE=example/basic-lcd-usage/cmake/arm-none-eabi-gcc.cmake -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY && cmake --build example/basic-lcd-usage/build",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"reveal": "always",
+				"panel": "shared"
+			},
+			"problemMatcher": []
+		}
+	]
+}

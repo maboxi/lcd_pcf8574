@@ -1,0 +1,1 @@
+This directory contains the example-local HAL configuration header and the main application header.

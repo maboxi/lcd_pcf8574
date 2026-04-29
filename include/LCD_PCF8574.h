@@ -51,9 +51,9 @@
 
 #pragma once
 
-#include "stdint.h"
+#include <stdint.h>
 
-#define LCD_BIT_ENABLE (1<<2)
+#define LCD_BIT_ENABLE (1 << 2)
 
 // LCD 2004A Instruction Set
 #define LCD_CMD_ClearDisplay 	(0b00000001)
@@ -76,9 +76,15 @@
  * LCD struct definition
  */
 
+typedef void (*LCD_I2C_TransmitFn)(void *context, uint16_t address, const uint8_t *data, uint16_t length);
+typedef void (*LCD_DelayFn)(void *context, uint32_t delayMs);
+
 struct LCD2004_I2C_t
 {
-	uint8_t i2cAddress;
+	uint16_t i2cAddress;
+	LCD_I2C_TransmitFn transmit;
+	LCD_DelayFn delay;
+	void *context;
 	uint8_t lcd_backlight, lcd_displayOnOff, lcd_cursorOnOff, lcd_cursorBlink;
 	uint8_t displayDataBuffer[LCD_BUFFER_NUMCHARS * 4];
 	char printBuffer[LCD_BUFFER_NUMCHARS + 1];
@@ -86,7 +92,7 @@ struct LCD2004_I2C_t
 typedef struct LCD2004_I2C_t LCD2004_I2C;
 
 
-void LCD_Init(LCD2004_I2C *lcd, uint8_t lcdI2CAddress);
+void LCD_Init(LCD2004_I2C *lcd, uint16_t lcdI2CAddress, LCD_I2C_TransmitFn transmit, LCD_DelayFn delay, void *context);
 void LCD_Clear(LCD2004_I2C *lcd);
 void LCD_ReturnHome(LCD2004_I2C *lcd);
 void LCD_DisplayOn(LCD2004_I2C *lcd);
@@ -98,11 +104,11 @@ void LCD_BacklightOff(LCD2004_I2C *lcd);
 
 void LCD_Test(LCD2004_I2C *lcd);
 
-void LCD_DisplayString1(LCD2004_I2C *lcd, char *string, uint8_t length);
+void LCD_DisplayString1(LCD2004_I2C *lcd, const char *string, uint8_t length);
 void LCD_DisplayString2(LCD2004_I2C *lcd, const char *string);
-void LCD_DisplayStringLine1(LCD2004_I2C *lcd, char *string, uint8_t length, uint8_t lineNr);
-void LCD_DisplayStringLine2(LCD2004_I2C *lcd, char *string, uint8_t lineNr);
-void LCD_DisplayStringLineCentered1(LCD2004_I2C *lcd, char *string, uint8_t length, uint8_t lineNr);
-void LCD_DisplayStringLineCentered2(LCD2004_I2C *lcd, char *string, uint8_t lineNr);
+void LCD_DisplayStringLine1(LCD2004_I2C *lcd, const char *string, uint8_t length, uint8_t lineNr);
+void LCD_DisplayStringLine2(LCD2004_I2C *lcd, const char *string, uint8_t lineNr);
+void LCD_DisplayStringLineCentered1(LCD2004_I2C *lcd, const char *string, uint8_t length, uint8_t lineNr);
+void LCD_DisplayStringLineCentered2(LCD2004_I2C *lcd, const char *string, uint8_t lineNr);
 
 void LCD_SetCursor(LCD2004_I2C *lcd, uint8_t row, uint8_t column);

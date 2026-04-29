@@ -44,12 +44,26 @@
  */
 
 #include "LCD_PCF8574.h"
-#include "main.h"
-#include "i2c.h"
 
 /*
  * LCD communication wrapper functions
  */
+
+static inline void LCDTransmit(LCD2004_I2C *lcd, const uint8_t *data, uint16_t length)
+{
+	if (lcd->transmit != 0)
+	{
+		lcd->transmit(lcd->context, lcd->i2cAddress, data, length);
+	}
+}
+
+static inline void LCDDelay(LCD2004_I2C *lcd, uint32_t delayMs)
+{
+	if (lcd->delay != 0)
+	{
+		lcd->delay(lcd->context, delayMs);
+	}
+}
 
 static inline void LCDSet4BitOperation(LCD2004_I2C *lcd)
 {
@@ -69,7 +83,7 @@ static inline void LCDSet4BitOperation(LCD2004_I2C *lcd)
 	i2cDataArray[1] = i2cData | (dataBits & 0xF0); // Enable 1->0 => Data latches
 
 	// send array
-	HAL_I2C_Master_Transmit(&hi2c1, lcd->i2cAddress, i2cDataArray, 2, 1000); //Sending in Blocking mode
+	LCDTransmit(lcd, i2cDataArray, 2);
 }
 
 static void SendLCDData(LCD2004_I2C *lcd, uint8_t dataBits, uint8_t RS, uint8_t RW)
@@ -113,7 +127,7 @@ static void SendLCDData(LCD2004_I2C *lcd, uint8_t dataBits, uint8_t RS, uint8_t 
 	i2cDataArray[3] = i2cData | ((dataBits & 0x0F) << 4);
 
 	// send array
-	HAL_I2C_Master_Transmit(&hi2c1, lcd->i2cAddress, i2cDataArray, 4, 1000); //Sending in Blocking mode
+	LCDTransmit(lcd, i2cDataArray, 4);
 }
 
 static void SendLCDDataMultiple(LCD2004_I2C *lcd, uint8_t *data, uint8_t dataLen, uint8_t RS, uint8_t RW)
@@ -132,7 +146,11 @@ static void SendLCDDataMultiple(LCD2004_I2C *lcd, uint8_t *data, uint8_t dataLen
 	// compose array
 	for (uint8_t j = 0; j < dataLen; j += LCD_BUFFER_NUMCHARS)
 	{
-		for (uint8_t i = 0; i < dataLen; i++)
+		charsToSend = dataLen - j;
+		if (charsToSend > LCD_BUFFER_NUMCHARS)
+			charsToSend = LCD_BUFFER_NUMCHARS;
+
+		for (uint8_t i = 0; i < charsToSend; i++)
 		{
 			index = j + i;
 			// 1: dataHigh Transmit
@@ -145,12 +163,8 @@ static void SendLCDDataMultiple(LCD2004_I2C *lcd, uint8_t *data, uint8_t dataLen
 			lcd->displayDataBuffer[4 * i + 3] = i2cData | ((data[index] & 0x0F) << 4);
 		}
 
-		charsToSend = dataLen - j;
-		if (charsToSend > LCD_BUFFER_NUMCHARS)
-			charsToSend = LCD_BUFFER_NUMCHARS;
-
 		// send array
-		HAL_I2C_Master_Transmit(&hi2c1, lcd->i2cAddress, lcd->displayDataBuffer, charsToSend * 4, 1000); //Sending in Blocking mode
+		LCDTransmit(lcd, lcd->displayDataBuffer, charsToSend * 4);
 	}
 
 }
@@ -174,17 +188,20 @@ static inline void SendLCDDisplayCursorBlinkUpdate(LCD2004_I2C *lcd)
  * API functions
  */
 
-void LCD_Init(LCD2004_I2C *lcd, uint8_t lcdI2CAddress)
+void LCD_Init(LCD2004_I2C *lcd, uint16_t lcdI2CAddress, LCD_I2C_TransmitFn transmit, LCD_DelayFn delay, void *context)
 {
 	// init state variables
 	lcd->i2cAddress = lcdI2CAddress;
+	lcd->transmit = transmit;
+	lcd->delay = delay;
+	lcd->context = context;
 
 	lcd->lcd_backlight = LCD_BACKLIGHT_OFF;
 	lcd->lcd_displayOnOff = 1;
 	lcd->lcd_cursorOnOff = 1;
 	lcd->lcd_cursorBlink = 0;
 
-	HAL_Delay(10);
+	LCDDelay(lcd, 10);
 
 	// set interface data length control bit to 4 bit data length
 	LCDSet4BitOperation(lcd);
@@ -204,10 +221,10 @@ void LCD_Init(LCD2004_I2C *lcd, uint8_t lcdI2CAddress)
 	// display on
 	LCD_BacklightOn(lcd);
 
-	HAL_Delay(1);
+	LCDDelay(lcd, 1);
 }
 
-void LCD_DisplayString1(LCD2004_I2C *lcd, char *string, uint8_t length)
+void LCD_DisplayString1(LCD2004_I2C *lcd, const char *string, uint8_t length)
 {
 	SendLCDDataMultiple(lcd, (uint8_t*) string, length, 1, 0);
 }
@@ -218,16 +235,16 @@ void LCD_DisplayString2(LCD2004_I2C *lcd, const char *string)
 	while (string[strlen] != 0 && strlen < 40)
 		strlen++;
 
-	LCD_DisplayString1(lcd, (char*) string, strlen);
+	LCD_DisplayString1(lcd, string, strlen);
 }
 
-void LCD_DisplayStringLine1(LCD2004_I2C *lcd, char *string, uint8_t length, uint8_t lineNr)
+void LCD_DisplayStringLine1(LCD2004_I2C *lcd, const char *string, uint8_t length, uint8_t lineNr)
 {
 	LCD_SetCursor(lcd, lineNr, 0);
 	LCD_DisplayString1(lcd, string, length);
 }
 
-void LCD_DisplayStringLine2(LCD2004_I2C *lcd, char *string, uint8_t lineNr)
+void LCD_DisplayStringLine2(LCD2004_I2C *lcd, const char *string, uint8_t lineNr)
 {
 	uint8_t strlen = 0;
 	while (string[strlen] != 0 && strlen < 40)
@@ -236,7 +253,7 @@ void LCD_DisplayStringLine2(LCD2004_I2C *lcd, char *string, uint8_t lineNr)
 	LCD_DisplayStringLine1(lcd, string, strlen, lineNr);
 }
 
-void LCD_DisplayStringLineCentered1(LCD2004_I2C *lcd, char *string, uint8_t length, uint8_t lineNr)
+void LCD_DisplayStringLineCentered1(LCD2004_I2C *lcd, const char *string, uint8_t length, uint8_t lineNr)
 {
 	uint8_t offset = (20 - length) / 2;
 	LCD_SetCursor(lcd, lineNr, 0);
@@ -247,7 +264,7 @@ void LCD_DisplayStringLineCentered1(LCD2004_I2C *lcd, char *string, uint8_t leng
 	LCD_DisplayString1(lcd, string, length);
 }
 
-void LCD_DisplayStringLineCentered2(LCD2004_I2C *lcd, char *string, uint8_t lineNr)
+void LCD_DisplayStringLineCentered2(LCD2004_I2C *lcd, const char *string, uint8_t lineNr)
 {
 	uint8_t strlen = 0;
 	while (string[strlen] != 0 && strlen < 40)
@@ -294,7 +311,7 @@ void LCD_Test(LCD2004_I2C *lcd)
 void LCD_Clear(LCD2004_I2C *lcd)
 {
 	SendLCDInstruction(lcd, LCD_CMD_ClearDisplay);
-	HAL_Delay(2);
+	LCDDelay(lcd, 2);
 	//LCD_SetCursor(lcd, 0, 0);
 }
 
